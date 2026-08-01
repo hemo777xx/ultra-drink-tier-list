@@ -1,3 +1,4 @@
+// sw.js — исправленная версия (игнорирует manifest.json)
 const CACHE_NAME = 'drink-tier-list-v1';
 const ASSETS = ['/', '/index.html', '/styles.css', '/script.js'];
 
@@ -8,8 +9,14 @@ self.addEventListener('install', (e) => {
 self.addEventListener('fetch', (e) => {
     const url = new URL(e.request.url);
     
-    // Игнорируем запросы к расширениям Chrome и другим сторонним ресурсам
-    if (url.protocol === 'chrome-extension:' || url.hostname.includes('chrome-extension')) {
+    // Игнорируем проблемные запросы:
+    // - расширения Chrome
+    // - manifest.json (чтобы избежать 401)
+    // - sw.js (чтобы не кешировать себя)
+    if (url.protocol === 'chrome-extension:' || 
+        url.hostname.includes('chrome-extension') ||
+        url.pathname === '/manifest.json' ||
+        url.pathname === '/sw.js') {
         e.respondWith(fetch(e.request));
         return;
     }
@@ -21,7 +28,7 @@ self.addEventListener('fetch', (e) => {
             return fetch(e.request).then(response => {
                 // Кешируем только GET-запросы к нашему сайту
                 if (e.request.method === 'GET' && 
-                    (url.hostname === 'drink-tier-list.netlify.app' || url.hostname === 'localhost')) {
+                    (url.hostname === 'ultra-drink-tier-list.netlify.app' || url.hostname === 'localhost')) {
                     return caches.open(CACHE_NAME).then(cache => {
                         cache.put(e.request, response.clone());
                         return response;
