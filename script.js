@@ -1,13 +1,26 @@
 // script.js — версия с хранением данных на GitHub и добавлением фото по ссылкам
-
-// Импортируем токен из отдельного файла (не храним в репозитории)
-import { GITHUB_TOKEN } from './config.js';
+// Токен берётся из переменной окружения GITHUB_TOKEN (Netlify) или из запасного источника
 
 class TierListApp {
     constructor() {
         // НАСТРОЙКА: замените на свои данные
         this.config = {
-            githubToken: GITHUB_TOKEN,        // ← ТЕПЕРЬ БЕЗОПАСНО!
+            // Токен берётся из переменной окружения Netlify или из локального config.js
+            githubToken: (() => {
+                // Попытка получить токен из переменной окружения (Netlify)
+                if (typeof process !== 'undefined' && process.env && process.env.GITHUB_TOKEN) {
+                    return process.env.GITHUB_TOKEN;
+                }
+                // Запасной вариант: попытка импортировать из config.js (для локальной разработки)
+                try {
+                    // Динамический импорт для локального тестирования
+                    const config = require('./config.js');
+                    return config.GITHUB_TOKEN || '';
+                } catch (e) {
+                    console.warn('GitHub токен не найден. Используйте переменную окружения GITHUB_TOKEN.');
+                    return '';
+                }
+            })(),
             owner: 'hemo777xx',               // Ваш ник на GitHub
             repo: 'tier-data',                // Название репозитория для данных
             collection: 'tierList'            // Имя файла (коллекции)
@@ -59,6 +72,13 @@ class TierListApp {
     // --- Работа с GitHub как с БД ---
 
     async loadFromGitHub() {
+        // Проверяем, есть ли токен
+        if (!this.config.githubToken) {
+            this.showToast('GitHub токен не настроен. Добавьте переменную GITHUB_TOKEN в Netlify.', 'error');
+            this.loadFromLocalStorage();
+            return;
+        }
+
         try {
             const url = `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${this.config.collection}.json`;
             const response = await fetch(url, {
@@ -76,7 +96,7 @@ class TierListApp {
                 return;
             }
 
-            if (!response.ok) throw new Error('Failed to load data from GitHub');
+            if (!response.ok) throw new Error(`Failed to load data from GitHub: ${response.status}`);
             
             const data = await response.json();
             const content = JSON.parse(atob(data.content));
@@ -91,6 +111,14 @@ class TierListApp {
     }
 
     async saveToGitHub() {
+        // Проверяем, есть ли токен
+        if (!this.config.githubToken) {
+            console.warn('GitHub токен не настроен. Данные сохранены только локально.');
+            localStorage.setItem('drinkTierList', JSON.stringify(this.state.images));
+            this.showToast('Данные сохранены локально (токен не настроен).', 'error');
+            return;
+        }
+
         clearTimeout(this.saveTimeout);
         this.saveTimeout = setTimeout(async () => {
             try {
@@ -124,10 +152,11 @@ class TierListApp {
                     body: body
                 });
 
-                if (!response.ok) throw new Error('Failed to save to GitHub');
+                if (!response.ok) throw new Error(`Failed to save to GitHub: ${response.status}`);
                 
                 // Сохраняем в localStorage как резерв
                 localStorage.setItem('drinkTierList', JSON.stringify(this.state.images));
+                this.showToast('Данные сохранены на GitHub!', 'success');
             } catch (error) {
                 console.error('GitHub Save Error:', error);
                 // Сохраняем хотя бы в localStorage
@@ -141,9 +170,12 @@ class TierListApp {
         const local = localStorage.getItem('drinkTierList');
         if (local) {
             try {
-                this.state.images = JSON.parse(local);
-                this.render();
-                this.showToast('Загружено из локального кеша', 'info');
+                const data = JSON.parse(local);
+                if (data.length > 0) {
+                    this.state.images = data;
+                    this.render();
+                    this.showToast('Загружено из локального кеша', 'info');
+                }
             } catch (e) {
                 console.error('Parse error:', e);
             }
