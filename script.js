@@ -1,26 +1,12 @@
 // script.js — версия с хранением данных на GitHub и добавлением фото по ссылкам
-// Токен берётся из переменной окружения GITHUB_TOKEN (Netlify) или из запасного источника
+// Токен берётся из переменной окружения GITHUB_TOKEN (Netlify)
 
 class TierListApp {
     constructor() {
         // НАСТРОЙКА: замените на свои данные
         this.config = {
-            // Токен берётся из переменной окружения Netlify или из локального config.js
-            githubToken: (() => {
-                // Попытка получить токен из переменной окружения (Netlify)
-                if (typeof process !== 'undefined' && process.env && process.env.GITHUB_TOKEN) {
-                    return process.env.GITHUB_TOKEN;
-                }
-                // Запасной вариант: попытка импортировать из config.js (для локальной разработки)
-                try {
-                    // Динамический импорт для локального тестирования
-                    const config = require('./config.js');
-                    return config.GITHUB_TOKEN || '';
-                } catch (e) {
-                    console.warn('GitHub токен не найден. Используйте переменную окружения GITHUB_TOKEN.');
-                    return '';
-                }
-            })(),
+            // Токен берётся из переменной окружения Netlify
+            githubToken: process.env.GITHUB_TOKEN || '',
             owner: 'hemo777xx',               // Ваш ник на GitHub
             repo: 'tier-data',                // Название репозитория для данных
             collection: 'tierList'            // Имя файла (коллекции)
