@@ -1,17 +1,24 @@
-// script.js — версия с хранением данных на GitHub и добавлением фото по ссылкам
-// Токен берётся из переменной окружения GITHUB_TOKEN (Netlify)
+// script.js — версия с хранением данных в Firebase
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+
+// Ваш конфиг Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyCl4mRL4eS7Wc9G4_UuvYBVLu0Wl6f-JME",
+    authDomain: "ultra-drink-tier-list.firebaseapp.com",
+    projectId: "ultra-drink-tier-list",
+    storageBucket: "ultra-drink-tier-list.firebasestorage.app",
+    messagingSenderId: "822887469615",
+    appId: "1:822887469615:web:6b02b3b155943fd65aacda",
+    measurementId: "G-5NQ7VRT3SP"
+};
+
+// Инициализация Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 class TierListApp {
     constructor() {
-        // НАСТРОЙКА: замените на свои данные
-        this.config = {
-            // Токен берётся из переменной окружения Netlify
-            githubToken: process.env.GITHUB_TOKEN || '',
-            owner: 'hemo777xx',               // Ваш ник на GitHub
-            repo: 'tier-data',                // Название репозитория для данных
-            collection: 'tierList'            // Имя файла (коллекции)
-        };
-
         this.state = {
             images: [], // { id, url, tier, order }
             tiers: [
@@ -52,104 +59,49 @@ class TierListApp {
     async init() {
         this.renderTiers();
         this.bindEvents();
-        await this.loadFromGitHub();
+        await this.checkUrlAndAddDrink(); // Проверяем ссылку ?add=...
+        await this.loadFromFirebase();    // Загружаем данные из базы
     }
 
-    // --- Работа с GitHub как с БД ---
+    // --- Работа с Firebase ---
 
-    async loadFromGitHub() {
-        // Проверяем, есть ли токен
-        if (!this.config.githubToken) {
-            this.showToast('GitHub токен не настроен. Добавьте переменную GITHUB_TOKEN в Netlify.', 'error');
-            this.loadFromLocalStorage();
-            return;
-        }
-
+    async loadFromFirebase() {
         try {
-            const url = `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${this.config.collection}.json`;
-            const response = await fetch(url, {
-                headers: {
-                    'Authorization': `token ${this.config.githubToken}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            });
-
-            if (response.status === 404) {
-                // Файла нет — создаём пустой
-                this.state.images = [];
-                this.render();
-                this.showToast('Нет сохранённых данных. Начните добавлять фото!', 'info');
-                return;
-            }
-
-            if (!response.ok) throw new Error(`Failed to load data from GitHub: ${response.status}`);
+            const docRef = doc(db, "tierlist_data", "main_state");
+            const docSnap = await getDoc(docRef);
             
-            const data = await response.json();
-            const content = JSON.parse(atob(data.content));
-            this.state.images = content.images || [];
-            this.render();
-            this.showToast('Данные загружены с GitHub!', 'success');
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                this.state.images = data.images || [];
+                this.render();
+                this.showToast('Данные загружены из базы!', 'success');
+            } else {
+                // Если в базе пусто, пробуем загрузить из локального кеша
+                this.loadFromLocalStorage();
+            }
         } catch (error) {
-            console.error('GitHub Load Error:', error);
-            this.showToast('Не удалось загрузить данные с GitHub. Использую локальный кеш.', 'error');
+            console.error('Firebase Load Error:', error);
+            this.showToast('Не удалось загрузить данные. Использую локальный кеш.', 'error');
             this.loadFromLocalStorage();
         }
     }
 
-    async saveToGitHub() {
-        // Проверяем, есть ли токен
-        if (!this.config.githubToken) {
-            console.warn('GitHub токен не настроен. Данные сохранены только локально.');
-            localStorage.setItem('drinkTierList', JSON.stringify(this.state.images));
-            this.showToast('Данные сохранены локально (токен не настроен).', 'error');
-            return;
-        }
-
+    async saveToFirebase() {
         clearTimeout(this.saveTimeout);
         this.saveTimeout = setTimeout(async () => {
             try {
-                const content = btoa(JSON.stringify({ images: this.state.images }, null, 2));
-                const url = `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${this.config.collection}.json`;
+                const docRef = doc(db, "tierlist_data", "main_state");
+                // Сохраняем весь массив изображений в базу
+                await setDoc(docRef, { images: this.state.images });
                 
-                // Сначала получаем SHA текущего файла (для обновления)
-                let sha = '';
-                try {
-                    const getRes = await fetch(url, {
-                        headers: { 'Authorization': `token ${this.config.githubToken}` }
-                    });
-                    if (getRes.ok) {
-                        const data = await getRes.json();
-                        sha = data.sha;
-                    }
-                } catch (e) { /* Файла нет — создаём новый */ }
-
-                const body = JSON.stringify({
-                    message: `Update tier list - ${new Date().toISOString()}`,
-                    content: content,
-                    sha: sha || undefined
-                });
-
-                const response = await fetch(url, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `token ${this.config.githubToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: body
-                });
-
-                if (!response.ok) throw new Error(`Failed to save to GitHub: ${response.status}`);
-                
-                // Сохраняем в localStorage как резерв
+                // Дублируем в localStorage как резервную копию
                 localStorage.setItem('drinkTierList', JSON.stringify(this.state.images));
-                this.showToast('Данные сохранены на GitHub!', 'success');
             } catch (error) {
-                console.error('GitHub Save Error:', error);
-                // Сохраняем хотя бы в localStorage
+                console.error('Firebase Save Error:', error);
                 localStorage.setItem('drinkTierList', JSON.stringify(this.state.images));
-                this.showToast('Не удалось сохранить на GitHub. Данные сохранены локально.', 'error');
+                this.showToast('Не удалось сохранить в базу. Сохранено локально.', 'error');
             }
-        }, 1000);
+        }, 1000); // Задержка 1 секунда, чтобы не отправлять запросы слишком часто
     }
 
     loadFromLocalStorage() {
@@ -168,9 +120,22 @@ class TierListApp {
         }
     }
 
+    // --- Чтение ссылки и добавление напитка ---
+
+    async checkUrlAndAddDrink() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const drinkUrl = urlParams.get('add'); // Ищем ?add=СсылкаНаКартинку
+        
+        if (drinkUrl) {
+            await this.addImageByUrl(drinkUrl, true);
+            // Очищаем ссылку, чтобы при обновлении страницы напиток не добавлялся повторно
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+
     // --- Добавление фото по ссылке ---
 
-    async addImageByUrl(url) {
+    async addImageByUrl(url, fromSharedLink = false) {
         if (!url || !url.trim()) {
             this.showToast('Введите ссылку на фото!', 'error');
             return;
@@ -182,7 +147,6 @@ class TierListApp {
             return;
         }
 
-        // Генерируем уникальный ID
         const id = `img_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
         this.state.images.push({
@@ -193,8 +157,13 @@ class TierListApp {
         });
 
         this.render();
-        await this.saveToGitHub();
-        this.showToast('Фото добавлено по ссылке!', 'success');
+        await this.saveToFirebase();
+        
+        if (!fromSharedLink) {
+            this.showToast('Фото добавлено по ссылке!', 'success');
+        } else {
+            this.showToast('Напиток из ссылки успешно добавлен!', 'success');
+        }
     }
 
     // --- Удаление фото ---
@@ -202,30 +171,30 @@ class TierListApp {
     async deleteImage(id) {
         this.state.images = this.state.images.filter(img => img.id !== id);
         this.render();
-        await this.saveToGitHub();
+        await this.saveToFirebase();
         this.showToast('Фото удалено.', 'success');
     }
 
     // --- Очистка всего ---
 
-    clearAll() {
-        if (confirm('Удалить все фото и сбросить тир-лист?')) {
+    async clearAll() {
+        if (confirm('Удалить все фото и сбросить тир-лист для всех?')) {
             this.state.images = [];
             localStorage.removeItem('drinkTierList');
             this.render();
-            this.saveToGitHub();
+            await this.saveToFirebase();
             this.showToast('Всё очищено!', 'success');
         }
     }
 
     // --- Перемещение по уровням ---
 
-    moveToTier(id, tier) {
+    async moveToTier(id, tier) {
         const img = this.state.images.find(i => i.id === id);
         if (img) {
             img.tier = tier;
             this.render();
-            this.saveToGitHub();
+            await this.saveToFirebase();
         }
     }
 
@@ -283,8 +252,8 @@ class TierListApp {
         card.addEventListener('dragstart', (e) => this.handleDragStart(e, img.id));
         card.addEventListener('dragend', this.handleDragEnd.bind(this));
         card.addEventListener('touchstart', (e) => this.handleTouchStart(e, img.id), {passive: true});
-        card.addEventListener('touchmove', this.handleTouchMove.bind(this), {passive: false});
-        card.addEventListener('touchend', this.handleTouchEnd.bind(this));
+        card.addEventListener('touchmove', (e) => this.handleTouchMove(e), {passive: false});
+        card.addEventListener('touchend', (e) => this.handleTouchEnd(e));
 
         card.querySelector('.drink-card__delete').addEventListener('click', (e) => {
             e.stopPropagation();
@@ -339,10 +308,11 @@ class TierListApp {
         if (this.touchTimer) {
             clearTimeout(this.touchTimer);
             this.touchTimer = null;
+            e.preventDefault(); 
         }
     }
 
-    handleTouchEnd() {
+    handleTouchEnd(e) {
         if (this.touchTimer) {
             clearTimeout(this.touchTimer);
             this.touchTimer = null;
@@ -438,7 +408,6 @@ class TierListApp {
     // --- События ---
 
     bindEvents() {
-        // Загрузка по ссылке
         this.dom.addUrlBtn?.addEventListener('click', () => {
             const url = this.dom.urlInput?.value;
             this.addImageByUrl(url);
@@ -452,7 +421,6 @@ class TierListApp {
             }
         });
 
-        // Старая загрузка файлов (можно оставить, но теперь это не обязательно)
         this.dom.uploadZone?.addEventListener('click', () => this.dom.fileInput?.click());
         this.dom.fileInput?.addEventListener('change', (e) => {
             this.showToast('Загрузка файлов отключена. Используйте добавление по ссылке.', 'error');
@@ -470,7 +438,6 @@ class TierListApp {
             this.showToast('Загрузка файлов отключена. Используйте добавление по ссылке.', 'error');
         });
 
-        // Действия
         this.dom.clearBtn?.addEventListener('click', () => this.clearAll());
         this.dom.themeToggle?.addEventListener('click', () => this.toggleTheme());
         this.dom.exportBtn?.addEventListener('click', () => this.exportToPNG());
