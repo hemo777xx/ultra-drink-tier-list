@@ -433,16 +433,21 @@ class TierListApp {
 
     // --- Экспорт в PNG ---
 
-    exportToPNG() {
+        exportToPNG() {
         if (typeof html2canvas !== 'undefined') {
-            html2canvas(this.dom.tierList, { backgroundColor: null }).then(canvas => {
+            // Добавлены настройки useCORS и allowTaint для правильной отрисовки картинок
+            html2canvas(this.dom.tierList, { 
+                backgroundColor: null, 
+                useCORS: true, 
+                allowTaint: true 
+            }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = 'drink-tier-list.png';
-                link.href = canvas.toDataURL();
+                link.href = canvas.toDataURL('image/png'); // явно указываем png
                 link.click();
             }).catch(err => {
-                console.error(err);
-                this.showToast('Ошибка экспорта.', 'error');
+                console.error('Экспорт ошибки:', err);
+                this.showToast('Ошибка экспорта. Возможно, картинки защищены от копирования.', 'error');
             });
         } else {
             this.showToast('Библиотека html2canvas не загружена.', 'error');
