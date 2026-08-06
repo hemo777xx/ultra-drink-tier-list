@@ -124,6 +124,57 @@
         }
     </script>
 
+    <!-- ===== FIREBASE ИНИЦИАЛИЗАЦИЯ И ЛОГИКА ===== -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCl4mRL4eS7Wc9G4_UuvYBVLu0Wl6f-JME",
+            authDomain: "ultra-drink-tier-list.firebaseapp.com",
+            projectId: "ultra-drink-tier-list",
+            storageBucket: "ultra-drink-tier-list.firebasestorage.app",
+            messagingSenderId: "822887469615",
+            appId: "1:822887469615:web:6b02b3b155943fd65aacda",
+            measurementId: "G-5NQ7VRT3SP"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Делаем функции базы данных доступными для вашего script.js
+        window.firebaseDB = db;
+        window.fbCollection = collection;
+        window.fbGetDocs = getDocs;
+        window.fbAddDoc = addDoc;
+        window.fbOnSnapshot = onSnapshot;
+
+        // --- ЛОГИКА ЧТЕНИЯ ССЫЛКИ И СОХРАНЕНИЯ В БАЗУ ---
+        async function handleUrlAddDrink() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const drinkName = urlParams.get('add'); // Ищем параметр ?add=НазваниеНапитка
+            
+            if (drinkName) {
+                try {
+                    // Сохраняем напиток в облачную базу данных
+                    await addDoc(collection(db, "drinks"), {
+                        name: drinkName,
+                        createdAt: new Date()
+                    });
+                    console.log("Напиток '" + drinkName + "' успешно добавлен в базу для всех!");
+                    
+                    // Очищаем ссылку, чтобы напиток не добавлялся повторно при обновлении страницы
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                } catch (error) {
+                    console.error("Ошибка при добавлении напитка в базу:", error);
+                }
+            }
+        }
+
+        // Запускаем проверку ссылки сразу после загрузки Firebase
+        handleUrlAddDrink();
+    </script>
+
     <!-- Клиентский JS -->
     <script type="module" src="script.js"></script>
 </body>
