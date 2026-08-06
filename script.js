@@ -1,4 +1,4 @@
-// script.js — версия с хранением данных в Firebase
+// script.js — версия с загрузкой файлов (сжатие) и хранением в Firebase Firestore
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 
@@ -63,7 +63,7 @@ class TierListApp {
         await this.loadFromFirebase();    // Загружаем данные из базы
     }
 
-    // --- Работа с Firebase ---
+    // --- Работа с Firebase Firestore (База данных) ---
 
     async loadFromFirebase() {
         try {
@@ -164,6 +164,93 @@ class TierListApp {
         } else {
             this.showToast('Напиток из ссылки успешно добавлен!', 'success');
         }
+    }
+
+    // --- НОВАЯ ФУНКЦИЯ: Загрузка и сжатие файла ---
+
+    async handleFileUpload(files) {
+        if (!files || files.length === 0) return;
+
+        this.dom.progressContainer.hidden = false;
+        this.dom.progressBarFill.style.width = '0%';
+        this.dom.progressText.textContent = '0%';
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            // Проверка размера (не даем грузить больше 10 МБ, чтобы браузер не завис)
+            if (file.size > 10 * 1024 * 1024) { 
+                this.showToast(`Файл ${file.name} слишком большой (макс 10 МБ).`, 'error');
+                continue;
+            }
+
+            try {
+                // Сжимаем картинку с помощью Canvas до 400px
+                const compressedUrl = await this.compressImage(file, 400);
+                
+                const id = `img_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+                this.state.images.push({
+                    id: id,
+                    url: compressedUrl, // Сохраняем сжатую картинку как Base64 строку
+                    tier: 'library',
+                    order: this.state.images.length
+                });
+
+            } catch (error) {
+                console.error('Upload Error:', error);
+                this.showToast(`Ошибка загрузки ${file.name}.`, 'error');
+            }
+
+            // Обновляем прогресс-бар
+            const progress = Math.round(((i + 1) / files.length) * 100);
+            this.dom.progressBarFill.style.width = `${progress}%`;
+            this.dom.progressText.textContent = `${progress}%`;
+        }
+
+        this.dom.progressContainer.hidden = true;
+        this.render();
+        await this.saveToFirebase();
+        this.showToast('Фото успешно загружены!', 'success');
+    }
+
+    // --- ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: Сжатие изображения ---
+    // Берет файл, рисует на скрытом холсте (canvas) и сохраняет в сжатом виде
+    compressImage(file, maxSize) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > maxSize) {
+                            height *= maxSize / width;
+                            width = maxSize;
+                        }
+                    } else {
+                        if (height > maxSize) {
+                            width *= maxSize / height;
+                            height = maxSize;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Сохраняем в формате JPEG с качеством 70% (очень легкий вес)
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                };
+                img.onerror = reject;
+                img.src = event.target.result;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
     }
 
     // --- Удаление фото ---
@@ -408,6 +495,7 @@ class TierListApp {
     // --- События ---
 
     bindEvents() {
+        // Загрузка по ссылке
         this.dom.addUrlBtn?.addEventListener('click', () => {
             const url = this.dom.urlInput?.value;
             this.addImageByUrl(url);
@@ -421,12 +509,14 @@ class TierListApp {
             }
         });
 
+        // Загрузка файлов с ПК и Телефона (ЧЕРЕЗ ВЫБОР ФАЙЛА)
         this.dom.uploadZone?.addEventListener('click', () => this.dom.fileInput?.click());
         this.dom.fileInput?.addEventListener('change', (e) => {
-            this.showToast('Загрузка файлов отключена. Используйте добавление по ссылке.', 'error');
-            e.target.value = '';
+            this.handleFileUpload(e.target.files);
+            e.target.value = ''; // Сбрасываем, чтобы можно было выбрать тот же файл снова
         });
 
+        // Загрузка файлов перетаскиванием (Drag & Drop)
         this.dom.uploadZone?.addEventListener('dragover', (e) => {
             e.preventDefault();
             this.dom.uploadZone.classList.add('dragover');
@@ -435,7 +525,9 @@ class TierListApp {
         this.dom.uploadZone?.addEventListener('drop', (e) => {
             e.preventDefault();
             this.dom.uploadZone?.classList.remove('dragover');
-            this.showToast('Загрузка файлов отключена. Используйте добавление по ссылке.', 'error');
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                this.handleFileUpload(e.dataTransfer.files);
+            }
         });
 
         this.dom.clearBtn?.addEventListener('click', () => this.clearAll());
