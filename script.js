@@ -333,9 +333,18 @@ class TierListApp {
         });
     }
 
-    exportToPNG() {
+     exportToPNG() {
         if (typeof html2canvas !== 'undefined') {
-            html2canvas(this.dom.tierList, { backgroundColor: null, useCORS: true, allowTaint: true }).then(canvas => {
+            // Определяем фон в зависимости от темы (чтобы прозрачные картинки не сливались)
+            const isLightTheme = document.documentElement.classList.contains('light-theme');
+            const bgColor = isLightTheme ? '#ffffff' : '#1e1e1e'; 
+
+            html2canvas(this.dom.tierList, { 
+                backgroundColor: bgColor, // Задаем четкий фон
+                useCORS: true, 
+                allowTaint: true,
+                scale: 2 // УВЕЛИЧИВАЕМ КАЧЕСТВО В 2 РАЗА (четкость и яркость)
+            }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = 'drink-tier-list.png';
                 link.href = canvas.toDataURL('image/png');
