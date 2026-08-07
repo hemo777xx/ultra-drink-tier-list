@@ -3,12 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Создавай свои тир-листы напитков! Загружай фото, перетаскивай и делись с друзьями.">
     
-    <!-- Open Graph -->
+    <!-- SEO -->
+    <title>🍺 Drink Tier List — Создай свой рейтинг напитков</title>
+    <meta name="description" content="Создавай свои тир-листы напитков! Загружай фото с телефона или ПК, перетаскивай в категории S, A, B, C, D и делись с друзьями.">
+    <meta name="keywords" content="tier list, тир лист, напитки, рейтинг, drinks, tier maker">
+    
+    <!-- Open Graph (для красивых ссылок в соцсетях) -->
     <meta property="og:title" content="🍺 Drink Tier List">
-    <meta property="og:description" content="Загружай фото напитков и оценивай их!">
+    <meta property="og:description" content="Загружай фото напитков и оценивай их вместе с друзьями!">
     <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ultra-drink-tier-list.netlify.app/">
+    <!-- Замените URL ниже на прямую ссылку на картинку-превью (загрузите её в репозиторий) -->
+    <meta property="og:image" content="https://ultra-drink-tier-list.netlify.app/preview.png">
+    <meta name="twitter:card" content="summary_large_image">
     
     <!-- Favicon (Base64 Beer Emoji) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍺</text></svg>">
@@ -28,8 +36,6 @@
     
     <!-- html2canvas for PNG Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
-
-    <title>🍺 Drink Tier List</title>
 </head>
 <body>
     <!-- Шапка -->
@@ -64,10 +70,11 @@
                 <i class="fas fa-cloud-arrow-up upload-zone__icon"></i>
                 <h3 class="upload-zone__title">Перетащи фото сюда или нажми для выбора</h3>
                 <p class="upload-zone__hint">Поддерживаются: .jpg, .png, .webp (до 5 МБ)</p>
-                <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" multiple hidden>
+                <!-- ИЗМЕНЕНО ТУТ: accept="image/*" для открытия камеры и галереи на телефоне -->
+                <input type="file" id="fileInput" accept="image/*" multiple hidden>
             </div>
 
-            <!-- ===== НОВЫЙ БЛОК: Добавление по ссылке ===== -->
+            <!-- Добавление по ссылке -->
             <div class="url-input-container" style="margin-top: 1rem; display: flex; gap: 0.5rem;">
                 <input type="url" id="urlInput" placeholder="Вставьте ссылку на фото..." 
                        style="flex: 1; padding: 0.75rem; border-radius: var(--radius); border: 1px solid var(--color-border); background: var(--color-surface-alt); color: var(--color-text);">
@@ -75,11 +82,11 @@
                     <i class="fas fa-plus"></i> Добавить
                 </button>
             </div>
-            <!-- ===== КОНЕЦ НОВОГО БЛОКА ===== -->
 
+            <!-- ИЗМЕНЕНО ТУТ: добавлен style="width: 0%;" чтобы не было Infinity% -->
             <div class="progress-container" id="progressContainer" hidden>
                 <div class="progress-bar">
-                    <div class="progress-bar__fill" id="progressBarFill"></div>
+                    <div class="progress-bar__fill" id="progressBarFill" style="width: 0%;"></div>
                 </div>
                 <span class="progress-text" id="progressText">0%</span>
             </div>
