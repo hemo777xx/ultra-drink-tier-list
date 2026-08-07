@@ -333,17 +333,18 @@ class TierListApp {
         });
     }
 
-     exportToPNG() {
+         exportToPNG() {
         if (typeof html2canvas !== 'undefined') {
-            // Определяем фон в зависимости от темы (чтобы прозрачные картинки не сливались)
+            // Узнаем текущую тему, чтобы задать правильный общий фон картинки
             const isLightTheme = document.documentElement.classList.contains('light-theme');
-            const bgColor = isLightTheme ? '#ffffff' : '#1e1e1e'; 
+            const bgColor = isLightTheme ? '#ffffff' : '#1a1a1a'; 
 
             html2canvas(this.dom.tierList, { 
-                backgroundColor: bgColor, // Задаем четкий фон
+                backgroundColor: bgColor, // Жестко задаем фон (никакой прозрачности)
                 useCORS: true, 
                 allowTaint: true,
-                scale: 2 // УВЕЛИЧИВАЕМ КАЧЕСТВО В 2 РАЗА (четкость и яркость)
+                scale: 2, // Увеличиваем разрешение в 2 раза для четкости
+                logging: false // Убираем лишние логи в консоль
             }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = 'drink-tier-list.png';
@@ -351,7 +352,7 @@ class TierListApp {
                 link.click();
             }).catch(err => {
                 console.error('Экспорт ошибки:', err);
-                this.showToast('Ошибка экспорта.', 'error');
+                this.showToast('Ошибка экспорта (картинка может быть защищена от копирования).', 'error');
             });
         } else {
             this.showToast('Библиотека html2canvas не загружена.', 'error');
