@@ -304,3 +304,36 @@ body {
     .tier-row__label { width: 60px; font-size: 1.2rem; }
     .drink-card { width: 70px; height: 70px; }
 }
+
+/* === ИСПРАВЛЕНИЕ СВЕТЛОЙ ТЕМЫ И КАРТОЧЕК === */
+
+/* Четкие границы для рядов в светлой теме */
+.light-theme .tier-row {
+    border: 2px solid #e0e0e0;
+    background-color: #ffffff;
+}
+.light-theme .tier-row__content {
+    background-color: #f8f9fa;
+    border-left: 2px solid #e0e0e0;
+}
+
+/* Четкие границы для зоны загрузки */
+.light-theme .upload-zone {
+    border: 2px dashed #bbb;
+    background-color: #f8f9fa;
+}
+
+/* Фон карточек (чтобы прозрачные картинки были видны на сайте) */
+.drink-card {
+    background-color: #2a2a2a; /* Темный фон для темной темы */
+}
+.light-theme .drink-card {
+    background-color: #ffffff; /* Белый фон для светлой темы */
+    border: 1px solid #ddd;
+}
+
+/* Граница библиотеки */
+.light-theme .library {
+    border-top: 2px solid #e0e0e0;
+    padding-top: 1rem;
+}
