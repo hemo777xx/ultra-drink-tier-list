@@ -337,3 +337,53 @@ body {
     border-top: 2px solid #e0e0e0;
     padding-top: 1rem;
 }
+
+/* === ЧЕТКИЕ ГРАНИЦЫ И ФОН КАРТОЧЕК === */
+
+/* Базовые настройки рядов (для темной темы) */
+.tier-row {
+    border: 2px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+.tier-row__content {
+    min-height: 100px;
+    padding: 10px;
+}
+
+/* СВЕТЛАЯ ТЕМА: Делаем контрастные границы */
+.light-theme .tier-row {
+    border: 2px solid #c4c4c4; /* Темно-серая граница */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* Легкая тень для объема */
+    background-color: #ffffff;
+}
+.light-theme .tier-row__content {
+    background-color: #f5f5f5; /* Светло-серый фон внутри тира */
+    border-left: 2px solid #c4c4c4;
+}
+
+/* СВЕТЛАЯ ТЕМА: Зона загрузки */
+.light-theme .upload-zone {
+    border: 2px dashed #999 !important;
+    background-color: #f9f9f9 !important;
+}
+
+/* СВЕТЛАЯ ТЕМА: Библиотека */
+.light-theme .library {
+    background: #f5f5f5;
+    border: 2px solid #c4c4c4;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 20px;
+}
+
+/* КАРТОЧКИ: Фон, чтобы прозрачные картинки не сливались */
+.drink-card {
+    background-color: #2a2a2a !important; /* Темный фон в темной теме */
+    border: 1px solid #555;
+}
+.light-theme .drink-card {
+    background-color: #ffffff !important; /* Белый фон в светлой теме */
+    border: 1px solid #ccc;
+}
